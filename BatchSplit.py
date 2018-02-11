@@ -1,24 +1,52 @@
-# BatchSplit module
-###############################################################################
-# Description
-# Generator that splits an array of records into an array of batches of records
-# Batches are available calling next(gen). Where gen is an instance of BatchSplit
-###############################################################################
-# Input
-# The array of records is located on disk
-# The records are strings of variable length, one per line.
-# The records contain only ascii characters
-###############################################################################
-# Output
-# Use with: next(gen), Where gen is an instance of BatchSplit.
-# Returns a batch of maximum max_records_per_batch items, but could be less
-# depending on overflow of the batch capacity.
-# IMPORTANT: 
-# Beware that generators raise a StopIteration exeption when there are no more data
-# Use safely within a try - except block
+"""BatchSplit.
 
-def BatchSplit(file_path, max_batch_size = 5000000, max_records_per_batch = 500, max_record_size = 1000000):    
+This module allows to read a large array of records in batches using generators.
+The advantage of using a generator is that it does not require to read the 
+entire array of records into memory to produce the batches, batches are built 
+one by one as they are required.
+ 
+
+The module currently contains only the the generator BatchSplitFromFile, 
+which implements batch spliting from a file on disk as data source.
+
+Todo:
+    * Create generators from other datasources. e.g stream, memory array, etc.
+"""
+import numpy as np
+def BatchSplitFromFile(file_path, max_batch_size = 5000000, max_records_per_batch = 500, max_record_size = 1000000):    
+    """BatchSplitFromFile
+        
+        This generator allows reading and generating batches from a file stored 
+        on disk. The generator allows to set the limits to the size of the 
+        batch, in bytes or in records, as well as a limit to the length of 
+        allowed records.
     
+        Note:
+            The records should be stored one record per line in the file. 
+            Batches will always respect the ``max_records_per_batch`` and 
+            ``max_batch_size`` limits. Therefore a batch is yielded when it
+            reaches either of these limits.
+    
+        Yields:
+            numpy array: batch, as an array of records. A record is a variable length string.
+            
+        Args:
+            file_path: Path to the file where the records are stored.
+            max_batch_size: Maximum size of batch allowed in bytes. Default 
+            value is 5000000 (5MB).
+            
+            max_records_per_batch: Maximum records allowed in a batch. Default
+            value is 500 records.
+            
+            max_record_size: Maximum length in bytes of a single records. Records
+            over this value are discarded. Default value is 1000000 (1MB)
+        
+        Example:
+            gen = BatchSplit.BatchSplitFromFile()
+            
+            batch = next(gen)               
+        
+    """
     # Initialize batch container and counters
     batch = []
     record_counter = 0
@@ -60,7 +88,7 @@ def BatchSplit(file_path, max_batch_size = 5000000, max_records_per_batch = 500,
                 # Case 3: If the current record overflows the current batch's capacity or the batch is already full
                 else:
                     # Yield (return) current batch as is without the current line
-                    yield batch
+                    yield np.array(batch)
                     # Clear batch and then include the current line in the new batch and update counters
                     batch.clear()
                     batch.append(current_record)
